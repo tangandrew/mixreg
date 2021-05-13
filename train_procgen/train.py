@@ -11,7 +11,7 @@ from procgen import ProcgenEnv
 from mpi4py import MPI
 
 from .model import get_mixreg_model
-from .ppo2 import learn
+from .ppo2 import learn, test
 from .network import build_impala_cnn
 
 LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo'
@@ -92,9 +92,9 @@ def main():
     )
     
     # Check if we are in train or test
-    logger.info('is_test_worker: ', is_test_worker)
-    logger.info('mpi_rank_weight:', mpi_rank_weight)
-    logger.info('num_levels: ', num_levels)
+    # logger.info('is_test_worker: ', is_test_worker)
+    # logger.info('mpi_rank_weight:', mpi_rank_weight)
+    # logger.info('num_levels: ', num_levels)
 
     # Create env
     logger.info("creating environment")
@@ -129,33 +129,63 @@ def main():
     # Training
     logger.info("training")
     ppo2.learn = learn  # use customized "learn" function
-    model = ppo2.learn(
-        env=venv,
-        network=conv_fn,
-        total_timesteps=timesteps_per_proc,
-        save_interval=args.save_interval,
-        nsteps=nsteps,
-        nminibatches=nminibatches,
-        lam=lam,
-        gamma=gamma,
-        noptepochs=ppo_epochs,
-        log_interval=1,
-        ent_coef=ent_coef,
-        mpi_rank_weight=mpi_rank_weight,
-        clip_vf=use_vf_clipping,
-        comm=comm,
-        lr=learning_rate,
-        cliprange=clip_range,
-        update_fn=None,
-        init_fn=None,
-        vf_coef=vf_coef,
-        max_grad_norm=max_grad_norm,
-        data_aug=args.data_aug,
-        use_rand_conv=args.use_rand_conv,
-        model_fn=get_mixreg_model(mix_mode=args.mix_mode, mix_alpha=args.mix_alpha,
-                                  use_l2reg=args.use_l2reg, l2reg_coeff=args.l2reg_coeff),
-        load_path=args.load_path,
-    )
+    ppo2.test = test
+    if is_test_worker:
+        model = ppo2.test(
+            env=venv,
+            network=conv_fn,
+            total_timesteps=timesteps_per_proc,
+            save_interval=args.save_interval,
+            nsteps=nsteps,
+            nminibatches=nminibatches,
+            lam=lam,
+            gamma=gamma,
+            noptepochs=ppo_epochs,
+            log_interval=1,
+            ent_coef=ent_coef,
+            mpi_rank_weight=mpi_rank_weight,
+            clip_vf=use_vf_clipping,
+            comm=comm,
+            lr=learning_rate,
+            cliprange=clip_range,
+            update_fn=None,
+            init_fn=None,
+            vf_coef=vf_coef,
+            max_grad_norm=max_grad_norm,
+            data_aug=args.data_aug,
+            use_rand_conv=args.use_rand_conv,
+            model_fn=get_mixreg_model(mix_mode=args.mix_mode, mix_alpha=args.mix_alpha,
+                                    use_l2reg=args.use_l2reg, l2reg_coeff=args.l2reg_coeff),
+            load_path=args.load_path,
+        )
+    else:
+        model = ppo2.learn(
+            env=venv,
+            network=conv_fn,
+            total_timesteps=timesteps_per_proc,
+            save_interval=args.save_interval,
+            nsteps=nsteps,
+            nminibatches=nminibatches,
+            lam=lam,
+            gamma=gamma,
+            noptepochs=ppo_epochs,
+            log_interval=1,
+            ent_coef=ent_coef,
+            mpi_rank_weight=mpi_rank_weight,
+            clip_vf=use_vf_clipping,
+            comm=comm,
+            lr=learning_rate,
+            cliprange=clip_range,
+            update_fn=None,
+            init_fn=None,
+            vf_coef=vf_coef,
+            max_grad_norm=max_grad_norm,
+            data_aug=args.data_aug,
+            use_rand_conv=args.use_rand_conv,
+            model_fn=get_mixreg_model(mix_mode=args.mix_mode, mix_alpha=args.mix_alpha,
+                                    use_l2reg=args.use_l2reg, l2reg_coeff=args.l2reg_coeff),
+            load_path=args.load_path,
+        )
 
     # Saving
     # logger.info("saving final model")
