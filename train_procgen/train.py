@@ -14,7 +14,7 @@ from .model import get_mixreg_model
 from .ppo2 import learn
 from .network import build_impala_cnn
 
-LOG_DIR = '~/procgen_exp/ppo'
+LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo'
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
     ppo_epochs = 3
     clip_range = .2
     max_grad_norm = 0.5
-    timesteps_per_proc = 100_000_000
+    timesteps_per_proc = 50_000_000
     use_vf_clipping = True
 
     # Parse arguments
@@ -55,6 +55,8 @@ def main():
     parser.add_argument('--mix_mode', type=str, default='nomix',
                         choices=['nomix', 'mixreg', 'mixobs'])
     parser.add_argument('--mix_alpha', type=float, default=0.2)
+    parser.add_argument('--load_path', type=str, default=None)
+    parser.add_argument('--save_interval', type=int, default=0)
     args = parser.parse_args()
 
     # Setup test worker
@@ -66,6 +68,10 @@ def main():
         is_test_worker = comm.Get_rank() % test_worker_interval == (test_worker_interval - 1)
     mpi_rank_weight = 0 if is_test_worker else 1
 
+    # run one update for test worker
+    if is_test_worker:
+        timesteps_per_proc = num_envs * nsteps
+    
     # Setup env specs
     if args.level_setup == "procgen":
         env_name = args.env_name
@@ -75,7 +81,7 @@ def main():
         env_name = args.env_name
         num_levels = 0
         start_level = args.start_level
-
+   
     # Setup logger
     log_comm = comm.Split(1 if is_test_worker else 0, 0)
     format_strs = ['csv', 'stdout'] if log_comm.Get_rank() == 0 else []
@@ -84,6 +90,11 @@ def main():
         f'/{args.level_setup}/{args.mix_mode}/{env_name}/run_{args.run_id}',
         format_strs=format_strs
     )
+    
+    # Check if we are in train or test
+    logger.info('is_test_worker: ', is_test_worker)
+    logger.info('mpi_rank_weight:', mpi_rank_weight)
+    logger.info('num_levels: ', num_levels)
 
     # Create env
     logger.info("creating environment")
@@ -101,6 +112,7 @@ def main():
     setup_mpi_gpus()
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True  # pylint: disable=E1101
+    # config.gpu_options.per_process_gpu_memory_fraction = 0.5
     sess = tf.Session(config=config)
     sess.__enter__()
 
@@ -121,7 +133,7 @@ def main():
         env=venv,
         network=conv_fn,
         total_timesteps=timesteps_per_proc,
-        save_interval=0,
+        save_interval=args.save_interval,
         nsteps=nsteps,
         nminibatches=nminibatches,
         lam=lam,
@@ -142,14 +154,15 @@ def main():
         use_rand_conv=args.use_rand_conv,
         model_fn=get_mixreg_model(mix_mode=args.mix_mode, mix_alpha=args.mix_alpha,
                                   use_l2reg=args.use_l2reg, l2reg_coeff=args.l2reg_coeff),
+        load_path=args.load_path,
     )
 
     # Saving
-    logger.info("saving final model")
-    if rank == 0:
-        checkdir = os.path.join(logger.get_dir(), 'checkpoints')
-        os.makedirs(checkdir, exist_ok=True)
-        model.save(os.path.join(checkdir, 'final_model.ckpt'))
+    # logger.info("saving final model")
+    # if rank == 0:
+    #     checkdir = os.path.join(logger.get_dir(), 'checkpoints')
+    #     os.makedirs(checkdir, exist_ok=True)
+    #     model.save(os.path.join(checkdir, 'final_model.ckpt'))
 
 
 if __name__ == '__main__':
