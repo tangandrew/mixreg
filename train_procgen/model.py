@@ -92,6 +92,19 @@ class MixregModel:
             R = tf.gather(R, train_model.indices, axis=0)
             ADV = tf.gather(ADV, train_model.indices, axis=0)
             A = tf.gather(A, train_model.indices, axis=0)
+        elif mix_mode == 'mixreg3':
+            # get coeff and indices
+            coeff_1 = train_model.coeff_1
+            coeff_2 = train_model.coeff_2
+            indices = train_model.indices
+            other_indices_1 = train_model.other_indices_1
+            other_indices_2 = train_model.other_indices_2
+            # mixup with 3 obsevations
+            OLDNEGLOGPAC = coeff_1 * tf.gather(OLDNEGLOGPAC, indices, axis=0) + coeff_2 * tf.gather(OLDNEGLOGPAC, other_indices_1, axis=0) + (1 - coeff_1 - coeff_2) * tf.gather(OLDNEGLOGPAC, other_indices_2, axis=0)
+            OLDVPRED = coeff_1 * tf.gather(OLDVPRED, indices, axis=0) + coeff_2 * tf.gather(OLDVPRED, other_indices_1, axis=0) + (1 - coeff_1 - coeff_2) * tf.gather(OLDVPRED, other_indices_2, axis=0) 
+            R = coeff_1 * tf.gather(R, indices, axis=0) + coeff_2 * tf.gather(R, other_indices_1, axis=0) + (1 - coeff_1 - coeff_2) * tf.gather(R, other_indices_2, axis=0)
+            ADV = coeff_1 * tf.gather(ADV, indices, axis=0) + coeff_2 * tf.gather(ADV, other_indices_1, axis=0) + (1 - coeff_1 - coeff_2) * tf.gather(ADV, other_indices_2, axis=0)
+            A = tf.gather(A, indices, axis=0)
         elif mix_mode == 'nomix':
             pass
         else:
@@ -217,6 +230,7 @@ class MixregModel:
         }
 
         batchsize = len(obs)
+        # print('batchsize', batchsize)
         if self.mix_mode in ['mixreg', 'mixobs']:
             # Generate mix coefficients and indices
             coeff = np.random.beta(self.mix_alpha, self.mix_alpha, size=(batchsize,))
@@ -229,6 +243,33 @@ class MixregModel:
             td_map[self.train_model.coeff] = coeff
             td_map[self.train_model.indices] = indices
             td_map[self.train_model.other_indices] = other_indices
+        elif self.mix_mode == 'mixreg3':
+            # TODO
+            # print('model', self.mix_mode)
+            coeff_arr = np.random.dirichlet((self.mix_alpha, self.mix_alpha, self.mix_alpha), size=(batchsize,))
+            seq_indices = np.arange(batchsize)
+            rand_indices_1 = np.random.permutation(batchsize)
+            rand_indices_2 = np.random.permutation(batchsize)
+            indices = np.array([])
+            other_indices_1 = np.array([])
+            other_indices_2 = np.array([])
+#             for i in range(batchsize):
+#                 if coeff_arr[i][0] > coeff_arr[i][1]:
+#                     if coeff_arr[i][0] > coeff_arr[i][2]:
+#                         indices = np.append(indices, seq_indices)
+#                         other_indices_1 = np.append(other_indices_1, rand_indices_1)
+#                     else:
+                        
+                
+            indices = np.where(coeff_arr[:, 0] > coeff_arr[:, 1], (np.where(coeff_arr[:, 0] > coeff_arr[:, 2], seq_indices, rand_indices_2)), (np.where(coeff_arr[:, 1] > coeff_arr[:, 2], rand_indices_1, rand_indices_2)))
+            other_indices_1 = np.where(coeff_arr[:, 1] > coeff_arr[:, 0], (np.where(coeff_arr[:, 1] > coeff_arr[:, 2], rand_indices_1, rand_indices_2)), (np.where(coeff_arr[:, 0] > coeff_arr[:, 2], seq_indices, rand_indices_2)))
+            other_indices_2 = np.where(coeff_arr[:, 2] > coeff_arr[:, 0], (np.where(coeff_arr[:, 2] > coeff_arr[:, 1], rand_indices_2, rand_indices_1)), (np.where(coeff_arr[:, 0] > coeff_arr[:, 1], seq_indices, rand_indices_1)))
+            # Add into feed dict
+            td_map[self.train_model.coeff_1] = coeff_arr[:, 0]
+            td_map[self.train_model.coeff_2] = coeff_arr[:, 1]
+            td_map[self.train_model.indices] = indices
+            td_map[self.train_model.other_indices_1] = other_indices_1
+            td_map[self.train_model.other_indices_2] = other_indices_2
         elif self.mix_mode == 'nomix':
             pass
         else:

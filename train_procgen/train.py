@@ -14,7 +14,9 @@ from .model import get_mixreg_model
 from .ppo2 import learn, test
 from .network import build_impala_cnn
 
-LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo'
+LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo/restrict_theme'
+# LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo/'
+
 
 
 def main():
@@ -30,7 +32,7 @@ def main():
     ppo_epochs = 3
     clip_range = .2
     max_grad_norm = 0.5
-    timesteps_per_proc = 50_000_000
+    timesteps_per_proc = 40_000_000
     use_vf_clipping = True
 
     # Parse arguments
@@ -53,7 +55,7 @@ def main():
     parser.add_argument('--level_setup', type=str, default='procgen',
                         choices=["procgen", "oracle"])
     parser.add_argument('--mix_mode', type=str, default='nomix',
-                        choices=['nomix', 'mixreg', 'mixobs'])
+                        choices=['nomix', 'mixreg', 'mixobs', 'mixreg3'])
     parser.add_argument('--mix_alpha', type=float, default=0.2)
     parser.add_argument('--load_path', type=str, default=None)
     parser.add_argument('--save_interval', type=int, default=0)
@@ -92,14 +94,14 @@ def main():
     )
     
     # Check if we are in train or test
-    # logger.info('is_test_worker: ', is_test_worker)
+    logger.info('is_test_worker: ', is_test_worker)
     # logger.info('mpi_rank_weight:', mpi_rank_weight)
     # logger.info('num_levels: ', num_levels)
 
     # Create env
     logger.info("creating environment")
     venv = ProcgenEnv(num_envs=num_envs, env_name=env_name, num_levels=num_levels,
-                      start_level=start_level, distribution_mode=args.distribution_mode)
+                      start_level=start_level, distribution_mode=args.distribution_mode, restrict_themes=True) #  , use_backgrounds=False
     venv = VecExtractDictObs(venv, "rgb")
     venv = VecMonitor(venv=venv, filename=None, keep_buf=100)
     venv = VecNormalize(venv=venv, ob=False)

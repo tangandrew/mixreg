@@ -28,6 +28,22 @@ def build_policy(env, policy_network, value_network=None, normalize_observations
             extra_tensors['coeff'] = COEFF
             extra_tensors['indices'] = INDICES
             extra_tensors['other_indices'] = OTHER_INDICES
+        elif mix_mode == 'mixreg3':
+            COEFF_1 = tf.placeholder(tf.float32, [None])
+            COEFF_2 = tf.placeholder(tf.float32, [None])
+            INDICES = tf.placeholder(tf.int32, [None])
+            OTHER_INDICES_1 = tf.placeholder(tf.int32, [None])
+            OTHER_INDICES_2 = tf.placeholder(tf.int32, [None])
+            coeff_1 = tf.reshape(COEFF_1, (-1, 1, 1, 1))
+            coeff_2 = tf.reshape(COEFF_2, (-1, 1, 1, 1))
+            encoded_x = tf.cast(X, tf.float32)
+            encoded_x = coeff_1 * tf.gather(encoded_x, INDICES, axis=0) + coeff_2 * tf.gather(encoded_x, OTHER_INDICES_1, axis=0) + (1 - coeff_1 -coeff_2) * tf.gather(encoded_x, OTHER_INDICES_2, axis=0)
+            encoded_x = tf.cast(encoded_x, tf.uint8)
+            extra_tensors['coeff_1'] = COEFF_1
+            extra_tensors['coeff_2'] = COEFF_2
+            extra_tensors['indices'] = INDICES
+            extra_tensors['other_indices_1'] = OTHER_INDICES_1
+            extra_tensors['other_indices_2'] = OTHER_INDICES_2
         elif mix_mode == 'nomix':
             encoded_x = X
         else:
