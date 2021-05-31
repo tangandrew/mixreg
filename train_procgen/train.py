@@ -14,8 +14,7 @@ from .model import get_mixreg_model
 from .ppo2 import learn, test
 from .network import build_impala_cnn
 
-LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo/restrict_theme'
-# LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo/'
+LOG_DIR = '~/cse257/mixreg/procgen_exp/ppo'
 
 
 
@@ -32,7 +31,7 @@ def main():
     ppo_epochs = 3
     clip_range = .2
     max_grad_norm = 0.5
-    timesteps_per_proc = 40_000_000
+    timesteps_per_proc = 50_000_000
     use_vf_clipping = True
 
     # Parse arguments
@@ -59,6 +58,19 @@ def main():
     parser.add_argument('--mix_alpha', type=float, default=0.2)
     parser.add_argument('--load_path', type=str, default=None)
     parser.add_argument('--save_interval', type=int, default=0)
+    parser.add_argument(
+        "--disable-backgrounds",
+        action="store_true",
+        default=False,
+        help="disable human designed backgrounds",
+    )
+    parser.add_argument(
+        "--restrict-themes",
+        action="store_true",
+        default=False,
+        help="restricts games that use multiple themes to use a single theme",
+    )
+
     args = parser.parse_args()
 
     # Setup test worker
@@ -83,25 +95,32 @@ def main():
         env_name = args.env_name
         num_levels = 0
         start_level = args.start_level
+
+    use_backgrounds = not args.disable_backgrounds
+    restrict_themes = args.restrict_themes
+    exp = ''
+    if args.disable_backgrounds:
+        exp = 'nobg'
+    elif args.restrict_themes:
+        exp = 'restrict_theme'
    
     # Setup logger
     log_comm = comm.Split(1 if is_test_worker else 0, 0)
     format_strs = ['csv', 'stdout'] if log_comm.Get_rank() == 0 else []
     logger.configure(
         dir=LOG_DIR +
-        f'/{args.level_setup}/{args.mix_mode}/{env_name}/run_{args.run_id}',
+        f'/{exp}/{args.level_setup}/{args.mix_mode}/{env_name}/run_{args.run_id}',
         format_strs=format_strs
     )
     
     # Check if we are in train or test
     logger.info('is_test_worker: ', is_test_worker)
-    # logger.info('mpi_rank_weight:', mpi_rank_weight)
-    # logger.info('num_levels: ', num_levels)
 
     # Create env
     logger.info("creating environment")
     venv = ProcgenEnv(num_envs=num_envs, env_name=env_name, num_levels=num_levels,
-                      start_level=start_level, distribution_mode=args.distribution_mode, restrict_themes=True) #  , use_backgrounds=False
+                      start_level=start_level, distribution_mode=args.distribution_mode, 
+                      use_backgrounds=use_backgrounds, restrict_themes=restrict_themes)
     venv = VecExtractDictObs(venv, "rgb")
     venv = VecMonitor(venv=venv, filename=None, keep_buf=100)
     venv = VecNormalize(venv=venv, ob=False)
@@ -189,12 +208,6 @@ def main():
             load_path=args.load_path,
         )
 
-    # Saving
-    # logger.info("saving final model")
-    # if rank == 0:
-    #     checkdir = os.path.join(logger.get_dir(), 'checkpoints')
-    #     os.makedirs(checkdir, exist_ok=True)
-    #     model.save(os.path.join(checkdir, 'final_model.ckpt'))
 
 
 if __name__ == '__main__':

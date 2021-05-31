@@ -7,8 +7,8 @@ This repo contains code for our NeurIPS 2020 paper Improving Generalization in R
 ## 🍜 Set up conda env and install OpenAI Baselines
 
 ```bash
-conda env create --file py36_cu9_tf112.yml
-conda activate py36_cu9_tf112
+conda env create --file py37_cu10_tf115.yml
+conda activate py37_cu10_tf115.yml
 
 git clone https://github.com/openai/baselines.git
 cd baselines
@@ -17,7 +17,10 @@ pip install -e .
 
 ## 🌭 Experiments & results
 
-Check out [experiments README](https://github.com/kaixin96/mixreg/blob/master/experiments/README.md) for running different experiments. You may also use the scripts in `experiments` folder to start training. All results are available at [Google Drive](https://drive.google.com/drive/folders/1wTURCswt6IfTDbEkBqMaIZhBlO7n8qDb?usp=sharing).
+Scripts in the `experiments/custom` folder are provided to start training and testing the custom experiments. Code used for plotting can be found in `figures.ipynb`.
+
+## Credits
+This code was built upon the code provided by Wang et al. under the MIT License.
 
 ## Citation
 ```
