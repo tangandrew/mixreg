@@ -17,7 +17,7 @@ pip install -e .
 
 ## 🌭 Experiments & results
 
-Scripts in the `experiments/custom` folder are provided to start training and testing the custom experiments. Results can be found in the `procgen_exp` folder. Code used for plotting can be found in `figures.ipynb`.
+Scripts in the `experiments/custom` folder are provided to start training and testing the custom experiments. After running `train.sh`, rename the CSV files in `procgen_exp` to train.csv before running the test scripts. Results can be found in the `procgen_exp` folder. Code used for plotting can be found in `figures.ipynb`.
 
 ## Credits
 This code was built upon the code provided by Wang et al. under the MIT License.
