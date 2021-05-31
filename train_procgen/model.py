@@ -244,8 +244,7 @@ class MixregModel:
             td_map[self.train_model.indices] = indices
             td_map[self.train_model.other_indices] = other_indices
         elif self.mix_mode == 'mixreg3':
-            # TODO
-            # print('model', self.mix_mode)
+            # Custom mixreg3
             coeff_arr = np.random.dirichlet((self.mix_alpha, self.mix_alpha, self.mix_alpha), size=(batchsize,))
             seq_indices = np.arange(batchsize)
             rand_indices_1 = np.random.permutation(batchsize)
@@ -253,14 +252,7 @@ class MixregModel:
             indices = np.array([])
             other_indices_1 = np.array([])
             other_indices_2 = np.array([])
-#             for i in range(batchsize):
-#                 if coeff_arr[i][0] > coeff_arr[i][1]:
-#                     if coeff_arr[i][0] > coeff_arr[i][2]:
-#                         indices = np.append(indices, seq_indices)
-#                         other_indices_1 = np.append(other_indices_1, rand_indices_1)
-#                     else:
-                        
-                
+
             indices = np.where(coeff_arr[:, 0] > coeff_arr[:, 1], (np.where(coeff_arr[:, 0] > coeff_arr[:, 2], seq_indices, rand_indices_2)), (np.where(coeff_arr[:, 1] > coeff_arr[:, 2], rand_indices_1, rand_indices_2)))
             other_indices_1 = np.where(coeff_arr[:, 1] > coeff_arr[:, 0], (np.where(coeff_arr[:, 1] > coeff_arr[:, 2], rand_indices_1, rand_indices_2)), (np.where(coeff_arr[:, 0] > coeff_arr[:, 2], seq_indices, rand_indices_2)))
             other_indices_2 = np.where(coeff_arr[:, 2] > coeff_arr[:, 0], (np.where(coeff_arr[:, 2] > coeff_arr[:, 1], rand_indices_2, rand_indices_1)), (np.where(coeff_arr[:, 0] > coeff_arr[:, 1], seq_indices, rand_indices_1)))
